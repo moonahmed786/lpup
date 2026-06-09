@@ -94,6 +94,8 @@ docker compose down -v
 
 Use `docker-compose.production.yml` for a deployable container layout. It builds self-contained app and web images, does not bind-mount the project source, keeps Laravel storage in a named Docker volume, does not publish MySQL to the host, runs Redis-backed cache/session/queue settings, and disables demo users by default.
 
+The production compose file is intended to sit behind an HTTPS reverse proxy or load balancer. It sets secure session cookies and trusts forwarded proxy headers so Laravel generates HTTPS-aware URLs when the proxy sends `X-Forwarded-Proto: https`.
+
 Required environment variables:
 
 ```bash
@@ -103,6 +105,7 @@ export DB_DATABASE=lpup
 export DB_USERNAME=lpup
 export DB_PASSWORD='use-a-long-random-password'
 export MYSQL_ROOT_PASSWORD='use-a-different-long-random-password'
+export TRUSTED_PROXIES='*'
 export APP_IMAGE_TAG=latest
 ```
 
@@ -117,14 +120,24 @@ docker compose -f docker-compose.production.yml exec app php artisan route:cache
 docker compose -f docker-compose.production.yml exec app php artisan view:cache
 ```
 
+Back up and restore MySQL:
+
+```bash
+scripts/backup-mysql.sh
+scripts/restore-mysql.sh backups/mysql/lpup-YYYYMMDDTHHMMSSZ.sql.gz
+```
+
 Production notes:
 
 - Set `APP_KEY` with `php artisan key:generate --show` and provide it through your environment or secret manager.
 - Keep `APP_DEBUG=false`.
 - Keep `SEED_DEMO_USERS=false` in production.
+- Terminate TLS before traffic reaches the app. Use a reverse proxy, load balancer, or platform ingress that forwards `X-Forwarded-*` headers.
+- Keep `SESSION_SECURE_COOKIE=true` in production. The production compose file sets this for app and worker containers.
 - Use shared storage, such as S3 or a mounted shared volume, when running multiple web/worker replicas. The production Docker compose file mounts the Laravel `storage` directory into app and worker containers. Set `PRODUCT_IMPORT_DISK` accordingly if you move imports to S3.
 - Keep `DB_QUEUE_RETRY_AFTER` and `REDIS_QUEUE_RETRY_AFTER` above the import job timeout. The default is `1200`, while the worker timeout is `900`.
 - Passport key files must be owned by the app user and use `600` or `660` permissions.
+- Schedule `scripts/backup-mysql.sh` from cron or your deployment platform and copy the generated files to durable off-server storage.
 
 ## Admin Panel
 

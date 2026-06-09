@@ -38,6 +38,7 @@ yarn-error.log
 
 /database/database.sqlite
 /lpup
+/backups/
 
 SPEC.md
 failed_rows_import_*.csv
