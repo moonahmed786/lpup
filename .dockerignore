@@ -1,5 +1,9 @@
 .git
 .github
+.claude
+.codex
+.idea
+.vscode
 vendor
 node_modules
 storage/logs/*
@@ -7,6 +11,8 @@ storage/framework/cache/*
 storage/framework/sessions/*
 storage/framework/views/*
 database/database.sqlite
+lpup
+SPEC.md
 .env.backup
 npm-debug.log
 yarn-error.log

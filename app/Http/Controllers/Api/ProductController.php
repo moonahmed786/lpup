@@ -15,13 +15,7 @@ use Illuminate\Routing\Attributes\Controllers\Authorize;
 use Illuminate\Routing\Attributes\Controllers\Middleware;
 
 /**
- * Basic product CRUD.
- *
- * Uses Laravel 13's first-party controller attributes:
- *  - #[Middleware] to require the Passport `api` guard for every action
- *    (replaces the removed constructor middleware calls).
- *  - #[Authorize] to enforce ProductPolicy abilities, which in turn check
- *    spatie/laravel-permission permissions on the `api` guard.
+ * Product API endpoints.
  */
 #[Middleware('auth:api')]
 class ProductController extends Controller

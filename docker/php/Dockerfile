@@ -1,7 +1,7 @@
-# PHP 8.3 FPM for the lpup Laravel 13 app.
+# PHP-FPM image for the LPUP application.
 FROM php:8.4-fpm
 
-# System libraries needed to build the PHP extensions below.
+# System packages and PHP extensions required by the application.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
         unzip \
@@ -27,7 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Composer (from the official image).
+# Composer binary from the official image.
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 ENV COMPOSER_ALLOW_SUPERUSER=1

@@ -5,20 +5,12 @@ namespace App\Http\Resources;
 use Illuminate\Http\Resources\JsonApi\JsonApiResource;
 
 /**
- * JSON:API resource for products, built on Laravel 13's first-party
- * Illuminate\Http\Resources\JsonApi\JsonApiResource.
- *
- * Emits the JSON:API document shape:
- *   { "data": { "type": "products", "id": "1", "attributes": { ... } } }
- *
- * `toType()`/`toId()` default to the model's table name and key; the
- * declared $attributes drive the `attributes` member and honour
- * sparse fieldsets automatically.
+ * JSON:API representation for products.
  */
 class ProductResource extends JsonApiResource
 {
     /**
-     * Attributes exposed in the JSON:API `attributes` member.
+     * Product fields exposed through the API.
      *
      * @var array<int, string>
      */
@@ -32,7 +24,7 @@ class ProductResource extends JsonApiResource
     ];
 
     /**
-     * No relationships on the products schema yet.
+     * Product resources do not expose relationships at this point.
      *
      * @var array<int|string, mixed>
      */

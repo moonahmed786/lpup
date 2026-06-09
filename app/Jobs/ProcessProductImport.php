@@ -19,13 +19,8 @@ use Throwable;
 /**
  * Processes an uploaded products file on the queue.
  *
- * Uses Laravel 13's first-party queue attributes (read by the queue on
- * dispatch via ReadsQueueAttributes): retry up to 3 times with a 10s/30s/60s
- * progressive backoff, a 15-minute timeout, and treat a timeout as a failure.
- *
- * The actual parsing is delegated to ProductsImport, which reads the file in
- * 1,000-row chunks (synchronously, in this job) and upserts on `sku`, keeping
- * memory flat regardless of file size.
+ * The import reader handles rows in chunks, so large CSV/XLSX files do not
+ * have to be loaded into memory all at once.
  */
 #[Tries(3)]
 #[Backoff([10, 30, 60])]
@@ -61,7 +56,7 @@ class ProcessProductImport implements ShouldQueue
         $import->forceFill([
             'status' => ProductImportStatus::Processing,
             'started_at' => $import->started_at ?? now(),
-            // Reset counters so retries/re-imports start clean.
+            // Retries and manual restarts should begin with fresh counters.
             'processed_rows' => 0,
             'failed_rows' => 0,
             'error_log_path' => null,
@@ -87,7 +82,7 @@ class ProcessProductImport implements ShouldQueue
     }
 
     /**
-     * Called after the final retry fails (or on timeout, per #[FailOnTimeout]).
+     * Mark the import after the queue has exhausted its retries.
      */
     public function failed(?Throwable $exception): void
     {
