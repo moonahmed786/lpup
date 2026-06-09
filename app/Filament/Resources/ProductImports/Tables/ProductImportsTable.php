@@ -55,7 +55,7 @@ class ProductImportsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->headerActions([
-                \Filament\Tables\Actions\Action::make('downloadSample')
+                Action::make('downloadSample')
                     ->label('Download Sample CSV')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->action(function () {
