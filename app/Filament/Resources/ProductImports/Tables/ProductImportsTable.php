@@ -4,9 +4,11 @@ namespace App\Filament\Resources\ProductImports\Tables;
 
 use App\Enums\ProductImportStatus;
 use App\Models\ProductImport;
+use App\Services\ProductImportService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
@@ -59,13 +61,48 @@ class ProductImportsTable
                     ->label('Download Sample CSV')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->action(function () {
-                        $csvContent = "name,sku,price,stock,description,category\nSample Product,SKU-12345,19.99,100,A sample product description,Electronics";
+                        $csvContent = "name,sku,quantity,price,description,status\nSample Product,SKU-12345,100,19.99,A sample product description,active";
+
                         return response()->streamDownload(function () use ($csvContent) {
                             echo $csvContent;
                         }, 'sample_product_import.csv');
                     }),
             ])
             ->recordActions([
+                Action::make('start')
+                    ->label('Start')
+                    ->icon('heroicon-o-play')
+                    ->color('success')
+                    ->visible(fn (ProductImport $record): bool => $record->canStart())
+                    ->requiresConfirmation()
+                    ->modalHeading('Start import')
+                    ->modalDescription('This will queue the import to run again from the beginning.')
+                    ->action(function (ProductImport $record): void {
+                        app(ProductImportService::class)->startExisting($record);
+
+                        Notification::make()
+                            ->title('Import queued')
+                            ->body("\"{$record->filename}\" will start shortly.")
+                            ->success()
+                            ->send();
+                    }),
+                Action::make('stop')
+                    ->label('Stop')
+                    ->icon('heroicon-o-stop')
+                    ->color('danger')
+                    ->visible(fn (ProductImport $record): bool => $record->canStop())
+                    ->requiresConfirmation()
+                    ->modalHeading('Stop import')
+                    ->modalDescription('A running import will stop after the current chunk finishes. Pending imports will be stopped before they start.')
+                    ->action(function (ProductImport $record): void {
+                        $import = app(ProductImportService::class)->requestStop($record);
+
+                        Notification::make()
+                            ->title($import->status === ProductImportStatus::Stopped ? 'Import stopped' : 'Stop requested')
+                            ->body("\"{$record->filename}\" ".($import->status === ProductImportStatus::Stopped ? 'has been stopped.' : 'will stop after the current chunk finishes.'))
+                            ->success()
+                            ->send();
+                    }),
                 Action::make('downloadFailures')
                     ->label('Failures')
                     ->icon('heroicon-o-arrow-down-tray')

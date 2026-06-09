@@ -21,7 +21,7 @@ class ImportProductsAction
             ->schema([
                 FileUpload::make('file')
                     ->label('Spreadsheet')
-                    ->helperText('.xlsx or .csv with header columns: name, sku, quantity, status')
+                    ->helperText('.xlsx or .csv with header columns: name, sku, quantity or stock, price, description, status')
                     ->disk('local')
                     ->directory('imports')
                     ->preserveFilenames()

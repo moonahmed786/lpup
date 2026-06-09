@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\ProductImportStatus;
+use App\Exceptions\ProductImportStopped;
 use App\Imports\ProductsImport;
 use App\Models\ProductImport;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,6 +12,7 @@ use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\FailOnTimeout;
 use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\Tries;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Throwable;
 
@@ -33,9 +35,7 @@ class ProcessProductImport implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public int $importId)
-    {
-    }
+    public function __construct(public int $importId, public ?string $batchId = null) {}
 
     public function handle(): void
     {
@@ -45,15 +45,40 @@ class ProcessProductImport implements ShouldQueue
             return;
         }
 
+        if ($this->batchId !== null && $import->batch_id !== $this->batchId) {
+            return;
+        }
+
+        if ($import->stop_requested_at !== null || $import->status === ProductImportStatus::Stopped) {
+            $import->forceFill([
+                'status' => ProductImportStatus::Stopped,
+                'completed_at' => $import->completed_at ?? now(),
+            ])->save();
+
+            return;
+        }
+
         $import->forceFill([
             'status' => ProductImportStatus::Processing,
             'started_at' => $import->started_at ?? now(),
             // Reset counters so retries/re-imports start clean.
             'processed_rows' => 0,
             'failed_rows' => 0,
+            'error_log_path' => null,
         ])->save();
 
-        Excel::import(new ProductsImport($import), $import->path, 'local');
+        Storage::disk('local')->delete("imports/failures/import_{$import->id}.csv");
+
+        try {
+            Excel::import(new ProductsImport($import), $import->path, 'local');
+        } catch (ProductImportStopped) {
+            $import->refresh()->forceFill([
+                'status' => ProductImportStatus::Stopped,
+                'completed_at' => now(),
+            ])->save();
+
+            return;
+        }
 
         $import->forceFill([
             'status' => ProductImportStatus::Completed,
@@ -66,6 +91,15 @@ class ProcessProductImport implements ShouldQueue
      */
     public function failed(?Throwable $exception): void
     {
+        if ($exception instanceof ProductImportStopped) {
+            ProductImport::whereKey($this->importId)->update([
+                'status' => ProductImportStatus::Stopped->value,
+                'completed_at' => now(),
+            ]);
+
+            return;
+        }
+
         ProductImport::whereKey($this->importId)->update([
             'status' => ProductImportStatus::Failed->value,
         ]);

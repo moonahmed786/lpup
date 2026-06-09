@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Enums\ProductStatus;
+use App\Exceptions\ProductImportStopped;
 use App\Models\ProductImport;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -27,9 +28,7 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
 
     private bool $failureHeaderWritten = false;
 
-    public function __construct(private readonly ProductImport $import)
-    {
-    }
+    public function __construct(private readonly ProductImport $import) {}
 
     public function chunkSize(): int
     {
@@ -55,6 +54,8 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
 
     public function collection(Collection $rows): void
     {
+        $this->ensureNotStopped();
+
         $valid = [];
         $failures = [];
         $now = now();
@@ -100,6 +101,8 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
         if ($failures !== []) {
             $this->import->increment('failed_rows', count($failures));
         }
+
+        $this->ensureNotStopped();
     }
 
     /**
@@ -108,13 +111,15 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
      */
     private function normalise(Collection $row): array
     {
+        $status = $this->str($row->get('status'));
+
         return [
             'name' => $this->str($row->get('name')),
             'sku' => $this->str($row->get('sku')),
-            'quantity' => $row->get('quantity'),
+            'quantity' => $row->get('quantity') ?? $row->get('stock'),
             'price' => $row->get('price'),
             'description' => $this->str($row->get('description')),
-            'status' => $this->str($row->get('status')),
+            'status' => $status !== null && $status !== '' ? $status : ProductStatus::Draft->value,
         ];
     }
 
@@ -149,6 +154,15 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
         }
 
         return null;
+    }
+
+    private function ensureNotStopped(): void
+    {
+        $this->import->refresh();
+
+        if ($this->import->stop_requested_at !== null) {
+            throw new ProductImportStopped;
+        }
     }
 
     /**

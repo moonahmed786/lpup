@@ -18,6 +18,7 @@ class ProductImport extends Model
         'status',
         'error_log_path',
         'batch_id',
+        'stop_requested_at',
         'started_at',
         'completed_at',
     ];
@@ -29,6 +30,7 @@ class ProductImport extends Model
             'processed_rows' => 'integer',
             'failed_rows' => 'integer',
             'status' => ProductImportStatus::class,
+            'stop_requested_at' => 'datetime',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
@@ -49,5 +51,22 @@ class ProductImport extends Model
         }
 
         return (int) min(100, floor(($this->processed_rows / $this->total_rows) * 100));
+    }
+
+    public function canStop(): bool
+    {
+        return in_array($this->status, [
+            ProductImportStatus::Pending,
+            ProductImportStatus::Processing,
+            ProductImportStatus::Stopping,
+        ], true);
+    }
+
+    public function canStart(): bool
+    {
+        return in_array($this->status, [
+            ProductImportStatus::Stopped,
+            ProductImportStatus::Failed,
+        ], true);
     }
 }

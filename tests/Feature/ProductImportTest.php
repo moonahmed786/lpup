@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ProductImportStatus;
+use App\Enums\ProductStatus;
 use App\Jobs\ProcessProductImport;
 use App\Models\Product;
 use App\Models\ProductImport;
@@ -122,6 +123,130 @@ it('counts invalid rows and writes them to a failures CSV without aborting', fun
     expect(Storage::disk('local')->exists($import->error_log_path))->toBeTrue();
     $csv = Storage::disk('local')->get($import->error_log_path);
     expect($csv)->toContain('SKU-NEG')->toContain('SKU-BAD');
+});
+
+it('accepts stock as a quantity alias and defaults a missing status', function () {
+    Storage::disk('local')->put(
+        'imports/stock-format.csv',
+        implode("\n", [
+            'name,sku,price,stock,description,category',
+            'Premium Headphones 000001,SKU-000001,10.74,25,Generated product,Electronics',
+        ])."\n",
+    );
+
+    $import = ProductImport::create([
+        'filename' => 'stock-format.csv',
+        'path' => 'imports/stock-format.csv',
+        'status' => ProductImportStatus::Pending,
+    ]);
+
+    ProcessProductImport::dispatchSync($import->id);
+    $import->refresh();
+
+    expect($import->status)->toBe(ProductImportStatus::Completed)
+        ->and($import->failed_rows)->toBe(0)
+        ->and($import->error_log_path)->toBeNull()
+        ->and(Product::where('sku', 'SKU-000001')->value('quantity'))->toBe(25)
+        ->and(Product::where('sku', 'SKU-000001')->first()->status)->toBe(ProductStatus::Draft);
+});
+
+it('clears stale failure logs when an import is retried', function () {
+    $path = writeImportCsv([
+        ['Bad qty', 'SKU-NEG', -3, 'active'],
+    ], 'retry.csv');
+
+    $import = ProductImport::create([
+        'filename' => 'retry.csv',
+        'path' => $path,
+        'status' => ProductImportStatus::Pending,
+    ]);
+
+    ProcessProductImport::dispatchSync($import->id);
+    $import->refresh();
+
+    expect($import->failed_rows)->toBe(1)
+        ->and($import->error_log_path)->not->toBeNull()
+        ->and(Storage::disk('local')->exists($import->error_log_path))->toBeTrue();
+
+    Storage::disk('local')->put(
+        $path,
+        implode("\n", [
+            'name,sku,quantity,status',
+            'Good Product,SKU-GOOD,3,active',
+        ])."\n",
+    );
+
+    ProcessProductImport::dispatchSync($import->id);
+    $import->refresh();
+
+    expect($import->failed_rows)->toBe(0)
+        ->and($import->error_log_path)->toBeNull()
+        ->and(Storage::disk('local')->exists("imports/failures/import_{$import->id}.csv"))->toBeFalse();
+});
+
+it('can stop a pending import before the queued job processes it', function () {
+    $path = writeImportCsv(validRows(3), 'stoppable.csv');
+    $import = ProductImport::create([
+        'filename' => 'stoppable.csv',
+        'path' => $path,
+        'status' => ProductImportStatus::Pending,
+    ]);
+
+    app(ProductImportService::class)->requestStop($import);
+
+    ProcessProductImport::dispatchSync($import->id);
+    $import->refresh();
+
+    expect($import->status)->toBe(ProductImportStatus::Stopped)
+        ->and($import->stop_requested_at)->not->toBeNull()
+        ->and($import->completed_at)->not->toBeNull()
+        ->and(Product::count())->toBe(0);
+});
+
+it('can start a stopped import again', function () {
+    Queue::fake();
+
+    $path = writeImportCsv(validRows(2), 'restartable.csv');
+    $import = ProductImport::create([
+        'filename' => 'restartable.csv',
+        'path' => $path,
+        'status' => ProductImportStatus::Stopped,
+        'stop_requested_at' => now(),
+        'completed_at' => now(),
+    ]);
+
+    app(ProductImportService::class)->startExisting($import);
+    $import->refresh();
+
+    expect($import->status)->toBe(ProductImportStatus::Pending)
+        ->and($import->stop_requested_at)->toBeNull()
+        ->and($import->completed_at)->toBeNull();
+
+    Queue::assertPushed(ProcessProductImport::class, fn ($job) => $job->importId === $import->id);
+});
+
+it('ignores stale queued jobs after a stopped import is started again', function () {
+    Queue::fake();
+
+    $path = writeImportCsv(validRows(2), 'stale-job.csv');
+    $import = app(ProductImportService::class)->startImport($path, 'stale-job.csv');
+    $oldBatchId = $import->batch_id;
+
+    app(ProductImportService::class)->requestStop($import);
+    app(ProductImportService::class)->startExisting($import->refresh());
+    $newBatchId = $import->refresh()->batch_id;
+
+    (new ProcessProductImport($import->id, $oldBatchId))->handle();
+    $import->refresh();
+
+    expect(Product::count())->toBe(0)
+        ->and($import->status)->toBe(ProductImportStatus::Pending)
+        ->and($newBatchId)->not->toBe($oldBatchId);
+
+    (new ProcessProductImport($import->id, $newBatchId))->handle();
+
+    expect(Product::count())->toBe(2)
+        ->and($import->refresh()->status)->toBe(ProductImportStatus::Completed);
 });
 
 it('declares the Laravel 13 queue attributes on the job', function () {
