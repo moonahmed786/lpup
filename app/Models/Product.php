@@ -21,6 +21,8 @@ class Product extends Model
         'sku',
         'quantity',
         'status',
+        'price',
+        'description',
     ];
 
     protected function casts(): array
@@ -28,6 +30,8 @@ class Product extends Model
         return [
             'quantity' => 'integer',
             'status' => ProductStatus::class,
+            'price' => 'decimal:2',
+            'description' => 'string',
         ];
     }
 }

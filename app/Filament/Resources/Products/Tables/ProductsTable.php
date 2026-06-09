@@ -25,6 +25,13 @@ class ProductsTable
                 TextColumn::make('quantity')
                     ->numeric()
                     ->sortable(),
+                TextColumn::make('price')
+                    ->money()
+                    ->sortable(),
+                TextColumn::make('description')
+                    ->limit(50)
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
                     ->badge()
                     ->searchable(),

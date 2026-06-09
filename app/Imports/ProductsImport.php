@@ -75,6 +75,8 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
                 'sku' => $data['sku'],
                 'name' => $data['name'],
                 'quantity' => (int) $data['quantity'],
+                'price' => $data['price'] !== null && $data['price'] !== '' ? (float) $data['price'] : null,
+                'description' => $data['description'],
                 'status' => $data['status'],
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -85,7 +87,7 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
             DB::table('products')->upsert(
                 array_values($valid),
                 ['sku'],
-                ['name', 'quantity', 'status', 'updated_at'],
+                ['name', 'quantity', 'price', 'description', 'status', 'updated_at'],
             );
         }
 
@@ -110,6 +112,8 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
             'name' => $this->str($row->get('name')),
             'sku' => $this->str($row->get('sku')),
             'quantity' => $row->get('quantity'),
+            'price' => $row->get('price'),
+            'description' => $this->str($row->get('description')),
             'status' => $this->str($row->get('status')),
         ];
     }
@@ -136,6 +140,10 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
             return 'quantity must be an integer >= 0';
         }
 
+        if ($data['price'] !== null && $data['price'] !== '' && ! is_numeric($data['price'])) {
+            return 'price must be a number';
+        }
+
         if (! in_array($data['status'], ProductStatus::values(), true)) {
             return 'status must be one of: '.implode(', ', ProductStatus::values());
         }
@@ -156,14 +164,14 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
         $disk = Storage::disk('local');
 
         if (! $this->failureHeaderWritten && ! $disk->exists($path)) {
-            $disk->put($path, "name,sku,quantity,status,error\n");
+            $disk->put($path, "name,sku,quantity,price,description,status,error\n");
             $this->import->forceFill(['error_log_path' => $path])->save();
         }
         $this->failureHeaderWritten = true;
 
         $handle = fopen($disk->path($path), 'a');
         foreach ($failures as $f) {
-            fputcsv($handle, [$f['name'], $f['sku'], $f['quantity'], $f['status'], $f['error']]);
+            fputcsv($handle, [$f['name'], $f['sku'], $f['quantity'], $f['price'], $f['description'], $f['status'], $f['error']]);
         }
         fclose($handle);
     }

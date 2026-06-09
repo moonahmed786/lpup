@@ -22,6 +22,13 @@ class ProductForm
                     ->required()
                     ->numeric()
                     ->default(0),
+                TextInput::make('price')
+                    ->numeric()
+                    ->prefix('$')
+                    ->nullable(),
+                \Filament\Forms\Components\Textarea::make('description')
+                    ->columnSpanFull()
+                    ->nullable(),
                 Select::make('status')
                     ->options(ProductStatus::class)
                     ->default('draft')

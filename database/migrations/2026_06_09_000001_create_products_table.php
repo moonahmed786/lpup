@@ -13,6 +13,8 @@ return new class extends Migration
             $table->string('name');
             $table->string('sku')->unique();
             $table->unsignedInteger('quantity')->default(0);
+            $table->decimal('price', 10, 2)->nullable();
+            $table->text('description')->nullable();
             $table->enum('status', ['active', 'inactive', 'draft'])->default('draft');
             $table->timestamps();
             $table->softDeletes();
