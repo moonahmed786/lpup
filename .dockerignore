@@ -10,6 +10,8 @@ storage/logs/*
 storage/framework/cache/*
 storage/framework/sessions/*
 storage/framework/views/*
+storage/app/private/imports/*
+storage/oauth-*.key
 database/database.sqlite
 lpup
 SPEC.md

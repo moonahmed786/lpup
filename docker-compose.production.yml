@@ -32,7 +32,7 @@ services:
       redis:
         condition: service_started
     volumes:
-      - lpup-import-storage:/var/www/html/storage/app/private
+      - lpup-storage:/var/www/html/storage
     networks:
       - lpup
 
@@ -80,7 +80,7 @@ services:
       redis:
         condition: service_started
     volumes:
-      - lpup-import-storage:/var/www/html/storage/app/private
+      - lpup-storage:/var/www/html/storage
     networks:
       - lpup
 
@@ -110,7 +110,7 @@ services:
 
 volumes:
   lpup-mysql-data:
-  lpup-import-storage:
+  lpup-storage:
 
 networks:
   lpup:
