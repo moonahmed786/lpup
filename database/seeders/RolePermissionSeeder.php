@@ -48,9 +48,9 @@ class RolePermissionSeeder extends Seeder
         $superAdmin = Role::findOrCreate('SuperAdmin', self::GUARD);
         $superAdmin->syncPermissions(Permission::where('guard_name', self::GUARD)->get());
 
-        // Admin: manage users + full product management.
+        // Admin: manage users and products, but not access control or imports.
         $admin = Role::findOrCreate('Admin', self::GUARD);
-        $admin->syncPermissions([...self::PRODUCT_PERMISSIONS, ...self::IMPORT_PERMISSIONS, 'users.manage']);
+        $admin->syncPermissions([...self::PRODUCT_PERMISSIONS, 'imports.viewAny', 'users.manage']);
 
         // User: read products only.
         $user = Role::findOrCreate('User', self::GUARD);

@@ -35,6 +35,31 @@ class RoleResource extends Resource
         return RolesTable::configure($table);
     }
 
+    public static function canViewAny(): bool
+    {
+        return self::canManageAccessControl();
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::canManageAccessControl();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::canManageAccessControl();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return self::canManageAccessControl();
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return self::canManageAccessControl();
+    }
+
     public static function getPages(): array
     {
         return [
@@ -42,5 +67,10 @@ class RoleResource extends Resource
             'create' => CreateRole::route('/create'),
             'edit' => EditRole::route('/{record}/edit'),
         ];
+    }
+
+    private static function canManageAccessControl(): bool
+    {
+        return auth()->user()?->hasRole('SuperAdmin') ?? false;
     }
 }

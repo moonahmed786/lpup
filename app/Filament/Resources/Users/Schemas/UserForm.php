@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Users\Schemas;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Hash;
 
 class UserForm
@@ -35,6 +36,9 @@ class UserForm
 
                 Select::make('roles')
                     ->relationship('roles', 'name')
+                    ->modifyQueryUsing(fn (Builder $query): Builder => auth()->user()?->hasRole('SuperAdmin')
+                        ? $query
+                        : $query->where('name', '!=', 'SuperAdmin'))
                     ->multiple()
                     ->preload()
                     ->helperText('Roles resolve on the api guard (see RolePermissionSeeder).'),
