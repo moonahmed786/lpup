@@ -35,6 +35,7 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 WORKDIR /var/www/html
 
 COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY docker/php/php.ini /usr/local/etc/php/conf.d/custom.ini
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["entrypoint.sh"]

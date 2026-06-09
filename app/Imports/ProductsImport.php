@@ -163,10 +163,14 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
 
         $disk = Storage::disk('local');
 
-        if (! $this->failureHeaderWritten && ! $disk->exists($path)) {
-            $disk->put($path, "name,sku,quantity,price,description,status,error\n");
+        if ($this->import->error_log_path === null) {
             $this->import->forceFill(['error_log_path' => $path])->save();
         }
+
+        if (! $this->failureHeaderWritten && ! $disk->exists($path)) {
+            $disk->put($path, "name,sku,quantity,price,description,status,error\n");
+        }
+
         $this->failureHeaderWritten = true;
 
         $handle = fopen($disk->path($path), 'a');
