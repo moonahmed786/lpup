@@ -35,8 +35,7 @@ class UserForm
                     ->maxLength(255),
 
                 Select::make('roles')
-                    ->relationship('roles', 'name')
-                    ->modifyQueryUsing(fn (Builder $query): Builder => auth()->user()?->hasRole('SuperAdmin')
+                    ->relationship('roles', 'name', fn (Builder $query): Builder => auth()->user()?->hasRole('SuperAdmin')
                         ? $query
                         : $query->where('name', '!=', 'SuperAdmin'))
                     ->multiple()

@@ -263,12 +263,16 @@ it('declares the Laravel 13 queue attributes on the job', function () {
     expect($ref->getAttributes(Backoff::class)[0]->newInstance()->backoff)->toBe([10, 30, 60]);
 });
 
-it('grants import controls to admins but not regular users', function () {
+it('keeps product imports restricted to super admins', function () {
     $this->seed(RolePermissionSeeder::class);
 
-    expect(Role::findByName('Admin', 'api')->hasPermissionTo('imports.upload', 'api'))->toBeTrue()
-        ->and(Role::findByName('Admin', 'api')->hasPermissionTo('imports.start', 'api'))->toBeTrue()
-        ->and(Role::findByName('Admin', 'api')->hasPermissionTo('imports.stop', 'api'))->toBeTrue()
-        ->and(Role::findByName('Admin', 'api')->hasPermissionTo('imports.downloadFailures', 'api'))->toBeTrue()
+    expect(Role::findByName('SuperAdmin', 'api')->hasPermissionTo('imports.upload', 'api'))->toBeTrue()
+        ->and(Role::findByName('SuperAdmin', 'api')->hasPermissionTo('imports.start', 'api'))->toBeTrue()
+        ->and(Role::findByName('SuperAdmin', 'api')->hasPermissionTo('imports.stop', 'api'))->toBeTrue()
+        ->and(Role::findByName('Admin', 'api')->hasPermissionTo('imports.viewAny', 'api'))->toBeTrue()
+        ->and(Role::findByName('Admin', 'api')->hasPermissionTo('imports.upload', 'api'))->toBeFalse()
+        ->and(Role::findByName('Admin', 'api')->hasPermissionTo('imports.start', 'api'))->toBeFalse()
+        ->and(Role::findByName('Admin', 'api')->hasPermissionTo('imports.stop', 'api'))->toBeFalse()
+        ->and(Role::findByName('Admin', 'api')->hasPermissionTo('imports.downloadFailures', 'api'))->toBeFalse()
         ->and(Role::findByName('User', 'api')->hasPermissionTo('imports.upload', 'api'))->toBeFalse();
 });
