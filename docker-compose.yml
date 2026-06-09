@@ -12,16 +12,20 @@ services:
       # These real env vars override the SQLite values in .env (Laravel's
       # immutable dotenv does not overwrite existing environment variables),
       # so the host stays on SQLite while containers use MySQL.
-      APP_ENV: local
-      APP_URL: http://localhost:8000
+      APP_ENV: ${APP_ENV:-local}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_URL: ${APP_URL:-http://localhost:8000}
       DB_CONNECTION: mysql
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_DATABASE: lpup
-      DB_USERNAME: lpup
-      DB_PASSWORD: secret
+      DB_DATABASE: ${DB_DATABASE:-lpup}
+      DB_USERNAME: ${DB_USERNAME:-lpup}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in your environment}
+      DB_QUEUE_RETRY_AFTER: ${DB_QUEUE_RETRY_AFTER:-1200}
+      REDIS_QUEUE_RETRY_AFTER: ${REDIS_QUEUE_RETRY_AFTER:-1200}
       REDIS_HOST: redis
       REDIS_CLIENT: phpredis
+      PRODUCT_IMPORT_DISK: ${PRODUCT_IMPORT_DISK:-local}
     depends_on:
       mysql:
         condition: service_healthy
@@ -54,22 +58,26 @@ services:
     volumes:
       - .:/var/www/html
     environment:
-      APP_ENV: local
-      APP_URL: http://localhost:8000
+      APP_ENV: ${APP_ENV:-local}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_URL: ${APP_URL:-http://localhost:8000}
       DB_CONNECTION: mysql
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_DATABASE: lpup
-      DB_USERNAME: lpup
-      DB_PASSWORD: secret
+      DB_DATABASE: ${DB_DATABASE:-lpup}
+      DB_USERNAME: ${DB_USERNAME:-lpup}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in your environment}
+      DB_QUEUE_RETRY_AFTER: ${DB_QUEUE_RETRY_AFTER:-1200}
+      REDIS_QUEUE_RETRY_AFTER: ${REDIS_QUEUE_RETRY_AFTER:-1200}
       REDIS_HOST: redis
       REDIS_CLIENT: phpredis
+      PRODUCT_IMPORT_DISK: ${PRODUCT_IMPORT_DISK:-local}
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_started
-    command: ["php", "artisan", "queue:work", "--tries=3"]
+    command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=900", "--sleep=3"]
     networks:
       - lpup
 
@@ -81,14 +89,14 @@ services:
       # Host 3307 -> container 3306 (avoids clashing with a local MySQL).
       - "3307:3306"
     environment:
-      MYSQL_DATABASE: lpup
-      MYSQL_USER: lpup
-      MYSQL_PASSWORD: secret
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ${DB_DATABASE:-lpup}
+      MYSQL_USER: ${DB_USERNAME:-lpup}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in your environment}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in your environment}
     volumes:
       - lpup-mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 5s
       timeout: 5s
       retries: 20

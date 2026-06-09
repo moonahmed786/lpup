@@ -6,6 +6,7 @@ use App\Jobs\ProcessProductImport;
 use App\Models\Product;
 use App\Models\ProductImport;
 use App\Services\ProductImportService;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\FailOnTimeout;
@@ -13,6 +14,7 @@ use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -259,4 +261,14 @@ it('declares the Laravel 13 queue attributes on the job', function () {
 
     expect($ref->getAttributes(Tries::class)[0]->newInstance()->tries)->toBe(3);
     expect($ref->getAttributes(Backoff::class)[0]->newInstance()->backoff)->toBe([10, 30, 60]);
+});
+
+it('grants import controls to admins but not regular users', function () {
+    $this->seed(RolePermissionSeeder::class);
+
+    expect(Role::findByName('Admin', 'api')->hasPermissionTo('imports.upload', 'api'))->toBeTrue()
+        ->and(Role::findByName('Admin', 'api')->hasPermissionTo('imports.start', 'api'))->toBeTrue()
+        ->and(Role::findByName('Admin', 'api')->hasPermissionTo('imports.stop', 'api'))->toBeTrue()
+        ->and(Role::findByName('Admin', 'api')->hasPermissionTo('imports.downloadFailures', 'api'))->toBeTrue()
+        ->and(Role::findByName('User', 'api')->hasPermissionTo('imports.upload', 'api'))->toBeFalse();
 });

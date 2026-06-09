@@ -51,6 +51,20 @@ it('validates the login payload', function () {
         ->assertJsonValidationErrors(['email', 'password']);
 });
 
+it('throttles repeated login attempts', function () {
+    for ($i = 0; $i < 5; $i++) {
+        $this->postJson('/api/login', [
+            'email' => 'jane@example.com',
+            'password' => 'wrong-password',
+        ])->assertStatus(422);
+    }
+
+    $this->postJson('/api/login', [
+        'email' => 'jane@example.com',
+        'password' => 'wrong-password',
+    ])->assertTooManyRequests();
+});
+
 it('blocks /api/me without authentication', function () {
     $this->getJson('/api/me')->assertUnauthorized();
 });

@@ -13,6 +13,9 @@ storage/framework/views/*
 database/database.sqlite
 lpup
 SPEC.md
+.env
+.env.*
+!.env.example
 .env.backup
 npm-debug.log
 yarn-error.log

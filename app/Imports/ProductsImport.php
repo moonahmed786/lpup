@@ -175,7 +175,7 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
         $path = $this->import->error_log_path
             ?? "imports/failures/import_{$this->import->id}.csv";
 
-        $disk = Storage::disk('local');
+        $disk = Storage::disk(config('product_import.disk'));
 
         if ($this->import->error_log_path === null) {
             $this->import->forceFill(['error_log_path' => $path])->save();

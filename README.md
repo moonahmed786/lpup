@@ -53,11 +53,13 @@ php artisan serve
 
 The app will be available at `http://127.0.0.1:8000`.
 
-## Docker Setup
+## Local Docker Setup
 
 Docker is the easiest way to run the full stack with MySQL, Redis, Nginx, and a queue worker:
 
 ```bash
+cp .env.example .env
+# Set DB_PASSWORD and MYSQL_ROOT_PASSWORD in .env before starting Docker.
 docker compose up -d --build
 docker compose exec app php artisan migrate --seed
 docker compose exec app php artisan passport:keys --force
@@ -75,7 +77,7 @@ Default database credentials in Docker:
 
 - Database: `lpup`
 - Username: `lpup`
-- Password: `secret`
+- Password: value of `DB_PASSWORD` in `.env`
 
 Useful Docker commands:
 
@@ -87,6 +89,42 @@ docker compose restart worker
 docker compose down
 docker compose down -v
 ```
+
+## Production Docker Setup
+
+Use `docker-compose.production.yml` for a deployable container layout. It builds self-contained app and web images, does not bind-mount the project source, does not publish MySQL to the host, runs Redis-backed cache/session/queue settings, and disables demo users by default.
+
+Required environment variables:
+
+```bash
+export APP_URL=https://your-domain.example
+export APP_KEY='base64:paste-key-from-php-artisan-key-generate-show'
+export DB_DATABASE=lpup
+export DB_USERNAME=lpup
+export DB_PASSWORD='use-a-long-random-password'
+export MYSQL_ROOT_PASSWORD='use-a-different-long-random-password'
+export APP_IMAGE_TAG=latest
+```
+
+Start the stack:
+
+```bash
+docker compose -f docker-compose.production.yml up -d --build
+docker compose -f docker-compose.production.yml exec app php artisan migrate --force
+docker compose -f docker-compose.production.yml exec app php artisan passport:keys --force
+docker compose -f docker-compose.production.yml exec app php artisan config:cache
+docker compose -f docker-compose.production.yml exec app php artisan route:cache
+docker compose -f docker-compose.production.yml exec app php artisan view:cache
+```
+
+Production notes:
+
+- Set `APP_KEY` with `php artisan key:generate --show` and provide it through your environment or secret manager.
+- Keep `APP_DEBUG=false`.
+- Keep `SEED_DEMO_USERS=false` in production.
+- Use shared storage, such as S3 or a mounted shared volume, when running multiple web/worker replicas. Set `PRODUCT_IMPORT_DISK` accordingly.
+- Keep `DB_QUEUE_RETRY_AFTER` and `REDIS_QUEUE_RETRY_AFTER` above the import job timeout. The default is `1200`, while the worker timeout is `900`.
+- Passport key files must be owned by the app user and use `600` or `660` permissions.
 
 ## Admin Panel
 

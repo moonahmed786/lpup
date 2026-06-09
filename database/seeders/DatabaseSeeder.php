@@ -18,6 +18,10 @@ class DatabaseSeeder extends Seeder
         // Roles & permissions must exist before users can be assigned roles.
         $this->call(RolePermissionSeeder::class);
 
+        if (! (bool) env('SEED_DEMO_USERS', ! app()->isProduction())) {
+            return;
+        }
+
         $superAdmin = User::factory()->create([
             'name' => 'Super Admin',
             'email' => 'superadmin@example.com',

@@ -60,6 +60,7 @@ class ProductImportsTable
                 Action::make('downloadSample')
                     ->label('Download Sample CSV')
                     ->icon('heroicon-o-arrow-down-tray')
+                    ->visible(fn (): bool => auth()->user()?->can('imports.upload') ?? false)
                     ->action(function () {
                         $csvContent = "name,sku,quantity,price,description,status\nSample Product,SKU-12345,100,19.99,A sample product description,active";
 
@@ -73,7 +74,8 @@ class ProductImportsTable
                     ->label('Start')
                     ->icon('heroicon-o-play')
                     ->color('success')
-                    ->visible(fn (ProductImport $record): bool => $record->canStart())
+                    ->visible(fn (ProductImport $record): bool => $record->canStart()
+                        && (auth()->user()?->can('imports.start') ?? false))
                     ->requiresConfirmation()
                     ->modalHeading('Start import')
                     ->modalDescription('This will queue the import to run again from the beginning.')
@@ -90,7 +92,8 @@ class ProductImportsTable
                     ->label('Stop')
                     ->icon('heroicon-o-stop')
                     ->color('danger')
-                    ->visible(fn (ProductImport $record): bool => $record->canStop())
+                    ->visible(fn (ProductImport $record): bool => $record->canStop()
+                        && (auth()->user()?->can('imports.stop') ?? false))
                     ->requiresConfirmation()
                     ->modalHeading('Stop import')
                     ->modalDescription('A running import will stop after the current chunk finishes. Pending imports will be stopped before they start.')
@@ -108,13 +111,15 @@ class ProductImportsTable
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('danger')
                     ->visible(fn (ProductImport $record): bool => filled($record->error_log_path)
-                        && Storage::disk('local')->exists($record->error_log_path))
-                    ->action(fn (ProductImport $record) => Storage::disk('local')
+                        && (auth()->user()?->can('imports.downloadFailures') ?? false)
+                        && Storage::disk(config('product_import.disk'))->exists($record->error_log_path))
+                    ->action(fn (ProductImport $record) => Storage::disk(config('product_import.disk'))
                         ->download($record->error_log_path, "failed_rows_import_{$record->id}.csv")),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->visible(fn (): bool => auth()->user()?->can('imports.delete') ?? false),
                 ]),
             ]);
     }

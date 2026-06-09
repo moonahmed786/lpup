@@ -22,10 +22,10 @@ class ImportProductsAction
                 FileUpload::make('file')
                     ->label('Spreadsheet')
                     ->helperText('.xlsx or .csv with header columns: name, sku, quantity or stock, price, description, status')
-                    ->disk('local')
+                    ->disk(config('product_import.disk'))
                     ->directory('imports')
                     ->preserveFilenames()
-                    ->maxSize(102400)
+                    ->maxSize(config('product_import.max_upload_kb'))
                     ->acceptedFileTypes([
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         'application/vnd.ms-excel',
@@ -34,6 +34,7 @@ class ImportProductsAction
                     ])
                     ->required(),
             ])
+            ->visible(fn (): bool => auth()->user()?->can('imports.upload') ?? false)
             ->action(function (array $data): void {
                 $path = Arr::first(Arr::wrap($data['file']));
 

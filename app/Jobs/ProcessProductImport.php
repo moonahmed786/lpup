@@ -62,10 +62,10 @@ class ProcessProductImport implements ShouldQueue
             'error_log_path' => null,
         ])->save();
 
-        Storage::disk('local')->delete("imports/failures/import_{$import->id}.csv");
+        Storage::disk(config('product_import.disk'))->delete("imports/failures/import_{$import->id}.csv");
 
         try {
-            Excel::import(new ProductsImport($import), $import->path, 'local');
+            Excel::import(new ProductsImport($import), $import->path, config('product_import.disk'));
         } catch (ProductImportStopped) {
             $import->refresh()->forceFill([
                 'status' => ProductImportStatus::Stopped,

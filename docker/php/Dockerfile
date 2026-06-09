@@ -34,9 +34,18 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 
 WORKDIR /var/www/html
 
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --no-progress --no-scripts --no-autoloader
+
+COPY . .
+RUN composer dump-autoload --optimize \
+    && php artisan package:discover --ansi
+
 COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/custom.ini
-RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
 ENTRYPOINT ["entrypoint.sh"]
 CMD ["php-fpm"]

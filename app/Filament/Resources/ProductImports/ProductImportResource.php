@@ -33,6 +33,16 @@ class ProductImportResource extends Resource
         return false;
     }
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('imports.viewAny') ?? false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return auth()->user()?->can('imports.delete') ?? false;
+    }
+
     public static function getPages(): array
     {
         return [

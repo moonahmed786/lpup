@@ -24,11 +24,21 @@ class RolePermissionSeeder extends Seeder
         'products.delete',
     ];
 
+    /** @var array<int, string> */
+    private const IMPORT_PERMISSIONS = [
+        'imports.viewAny',
+        'imports.upload',
+        'imports.start',
+        'imports.stop',
+        'imports.downloadFailures',
+        'imports.delete',
+    ];
+
     public function run(): void
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $permissions = [...self::PRODUCT_PERMISSIONS, 'users.manage'];
+        $permissions = [...self::PRODUCT_PERMISSIONS, ...self::IMPORT_PERMISSIONS, 'users.manage'];
 
         foreach ($permissions as $name) {
             Permission::findOrCreate($name, self::GUARD);
@@ -40,7 +50,7 @@ class RolePermissionSeeder extends Seeder
 
         // Admin: manage users + full product management.
         $admin = Role::findOrCreate('Admin', self::GUARD);
-        $admin->syncPermissions([...self::PRODUCT_PERMISSIONS, 'users.manage']);
+        $admin->syncPermissions([...self::PRODUCT_PERMISSIONS, ...self::IMPORT_PERMISSIONS, 'users.manage']);
 
         // User: read products only.
         $user = Role::findOrCreate('User', self::GUARD);
