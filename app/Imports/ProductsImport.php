@@ -17,16 +17,28 @@ use Maatwebsite\Excel\Events\BeforeImport;
 /**
  * Chunked, memory-safe products import.
  *
- * Reads 1,000 rows at a time, validates each row, and performs a raw
- * DB::table()->upsert() keyed on `sku` (idempotent — re-imports update
- * existing rows instead of duplicating). Invalid rows are written to a
- * per-import CSV and counted, but never abort the import.
+ * Reads 1,000 rows at a time and validates each row. Only brand-new SKUs are
+ * inserted; duplicates are treated as failures rather than overwriting data:
+ *   - a SKU that already exists in the products table is reported as
+ *     "duplicate sku (already exists)" and skipped;
+ *   - a SKU that repeats within the same uploaded file is reported as
+ *     "duplicate sku in file" and skipped (the first occurrence is inserted).
+ * Invalid and duplicate rows are written to a per-import failures CSV and
+ * counted, but never abort the import.
  */
 class ProductsImport implements ToCollection, WithChunkReading, WithEvents, WithHeadingRow
 {
     private const CHUNK = 1000;
 
     private bool $failureHeaderWritten = false;
+
+    /**
+     * SKUs already seen in this import run, used to detect duplicates that
+     * repeat within the uploaded file (the instance is reused across chunks).
+     *
+     * @var array<string, true>
+     */
+    private array $seenSkus = [];
 
     public function __construct(private readonly ProductImport $import) {}
 
@@ -56,7 +68,7 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
     {
         $this->ensureNotStopped();
 
-        $valid = [];
+        $candidates = [];
         $failures = [];
         $now = now();
 
@@ -70,26 +82,50 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
                 continue;
             }
 
-            // Keyed by sku so duplicates within the chunk collapse (last wins),
-            // which keeps the upsert statement valid.
-            $valid[$data['sku']] = [
-                'sku' => $data['sku'],
-                'name' => $data['name'],
-                'quantity' => (int) $data['quantity'],
-                'price' => $data['price'] !== null && $data['price'] !== '' ? (float) $data['price'] : null,
-                'description' => $data['description'],
-                'status' => $data['status'],
-                'created_at' => $now,
-                'updated_at' => $now,
-            ];
+            // A SKU repeated within the uploaded file: keep the first occurrence,
+            // report every later one as a failure.
+            if (isset($this->seenSkus[$data['sku']])) {
+                $failures[] = $data + ['error' => 'duplicate sku in file'];
+
+                continue;
+            }
+
+            $this->seenSkus[$data['sku']] = true;
+            $candidates[$data['sku']] = $data;
         }
 
-        if ($valid !== []) {
-            DB::table('products')->upsert(
-                array_values($valid),
-                ['sku'],
-                ['name', 'quantity', 'price', 'description', 'status', 'updated_at'],
-            );
+        // Reject candidates whose SKU already exists in the database (carried
+        // over from a previous import or chunk) instead of overwriting them.
+        if ($candidates !== []) {
+            $existing = DB::table('products')
+                ->whereIn('sku', array_keys($candidates))
+                ->pluck('sku')
+                ->all();
+
+            $insert = [];
+
+            foreach ($candidates as $sku => $data) {
+                if (in_array($sku, $existing, true)) {
+                    $failures[] = $data + ['error' => 'duplicate sku (already exists)'];
+
+                    continue;
+                }
+
+                $insert[] = [
+                    'sku' => $data['sku'],
+                    'name' => $data['name'],
+                    'quantity' => (int) $data['quantity'],
+                    'price' => $data['price'] !== null && $data['price'] !== '' ? (float) $data['price'] : null,
+                    'description' => $data['description'],
+                    'status' => $data['status'],
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+
+            if ($insert !== []) {
+                DB::table('products')->insert($insert);
+            }
         }
 
         if ($failures !== []) {

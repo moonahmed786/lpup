@@ -81,7 +81,7 @@ it('stores uploaded import files with a generated filename before queueing', fun
     Queue::assertPushed(ProcessProductImport::class, fn ($job) => $job->importId === $import->id);
 });
 
-it('processes a file in chunks, updates progress, and upserts products', function () {
+it('processes a file in chunks, updates progress, and inserts products', function () {
     // 2,500 rows exercises multiple 1,000-row chunks.
     $path = writeImportCsv(validRows(2500), 'bulk.csv');
     $import = ProductImport::create([
@@ -101,7 +101,7 @@ it('processes a file in chunks, updates progress, and upserts products', functio
         ->and($import->completed_at)->not->toBeNull();
 });
 
-it('is idempotent — re-importing updates existing products instead of duplicating', function () {
+it('skips SKUs that already exist and reports them as failures instead of overwriting', function () {
     $first = writeImportCsv([
         ['Widget', 'SKU-1', 5, 'active'],
         ['Gadget', 'SKU-2', 8, 'draft'],
@@ -112,17 +112,48 @@ it('is idempotent — re-importing updates existing products instead of duplicat
     expect(Product::count())->toBe(2)
         ->and(Product::where('sku', 'SKU-1')->value('quantity'))->toBe(5);
 
-    // Same SKUs, changed quantities.
+    // Re-import the same SKUs with changed values: existing products must be
+    // left untouched and every duplicate row reported as a failure.
     $second = writeImportCsv([
         ['Widget Renamed', 'SKU-1', 99, 'inactive'],
         ['Gadget', 'SKU-2', 8, 'draft'],
     ], 'second.csv');
     $importB = ProductImport::create(['filename' => 'second.csv', 'path' => $second, 'status' => ProductImportStatus::Pending]);
     ProcessProductImport::dispatchSync($importB->id);
+    $importB->refresh();
 
-    expect(Product::count())->toBe(2) // no duplicates
-        ->and(Product::where('sku', 'SKU-1')->value('quantity'))->toBe(99) // updated
-        ->and(Product::where('sku', 'SKU-1')->value('name'))->toBe('Widget Renamed');
+    expect(Product::count())->toBe(2) // nothing new inserted
+        ->and(Product::where('sku', 'SKU-1')->value('quantity'))->toBe(5) // unchanged
+        ->and(Product::where('sku', 'SKU-1')->value('name'))->toBe('Widget') // unchanged
+        ->and($importB->status)->toBe(ProductImportStatus::Completed)
+        ->and($importB->processed_rows)->toBe(2)
+        ->and($importB->failed_rows)->toBe(2)
+        ->and($importB->error_log_path)->not->toBeNull();
+
+    $csv = Storage::disk('local')->get($importB->error_log_path);
+    expect($csv)->toContain('SKU-1')
+        ->toContain('SKU-2')
+        ->toContain('duplicate sku (already exists)');
+});
+
+it('reports SKUs that repeat within the same file as duplicates, keeping the first row', function () {
+    $path = writeImportCsv([
+        ['First Widget', 'SKU-DUP', 5, 'active'],
+        ['Second Widget', 'SKU-DUP', 9, 'inactive'], // same SKU later in the file
+        ['Unique', 'SKU-UNIQUE', 3, 'active'],
+    ], 'dupes.csv');
+    $import = ProductImport::create(['filename' => 'dupes.csv', 'path' => $path, 'status' => ProductImportStatus::Pending]);
+
+    ProcessProductImport::dispatchSync($import->id);
+    $import->refresh();
+
+    expect(Product::count())->toBe(2) // first SKU-DUP + SKU-UNIQUE
+        ->and(Product::where('sku', 'SKU-DUP')->value('name'))->toBe('First Widget') // first row wins
+        ->and($import->processed_rows)->toBe(3)
+        ->and($import->failed_rows)->toBe(1);
+
+    $csv = Storage::disk('local')->get($import->error_log_path);
+    expect($csv)->toContain('duplicate sku in file');
 });
 
 it('counts invalid rows and writes them to a failures CSV without aborting', function () {

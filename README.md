@@ -177,6 +177,15 @@ Supported columns:
 
 Extra columns such as `category` are ignored.
 
+### Duplicate handling
+
+Imports only **insert new products**; they never overwrite existing data:
+
+- A row whose `sku` already exists in the database is skipped and recorded in the failures CSV as `duplicate sku (already exists)`.
+- A `sku` that repeats within the same uploaded file keeps the first occurrence and records the later ones as `duplicate sku in file`.
+
+Both count toward the failed-row total, so re-uploading the same file results in every row being reported as a duplicate rather than changing any products.
+
 ### Upload size limits
 
 The maximum upload size is controlled by `PRODUCT_IMPORT_MAX_UPLOAD_KB` (default `102400`, i.e. 100 MB), which feeds both the Filament `FileUpload` validation and the Livewire temporary-upload rules. The production Docker image already sets matching PHP and nginx limits (`docker/php/php.ini`, `docker/nginx/default.conf`).
