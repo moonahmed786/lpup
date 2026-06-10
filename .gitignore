@@ -41,5 +41,6 @@ yarn-error.log
 /backups/
 
 SPEC.md
+PRESENTATION.md
 failed_rows_import_*.csv
 product_import_*_records.csv
