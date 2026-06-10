@@ -29,6 +29,8 @@ class UpdateProductRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'sku' => ['sometimes', 'required', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($productId)],
             'quantity' => ['sometimes', 'required', 'integer', 'min:0'],
+            'price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'status' => ['sometimes', 'required', new Enum(ProductStatus::class)],
         ];
     }

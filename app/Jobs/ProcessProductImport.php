@@ -97,6 +97,7 @@ class ProcessProductImport implements ShouldQueue
 
         ProductImport::whereKey($this->importId)->update([
             'status' => ProductImportStatus::Failed->value,
+            'completed_at' => now(),
         ]);
     }
 }

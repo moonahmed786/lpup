@@ -17,9 +17,10 @@ LPUP is a Laravel application for product management, API access, and bulk produ
 ## Features
 
 - Product CRUD API with JSON:API responses
-- Passport login, logout, and `/api/me`
+- Passport login with an HTTP-only API cookie, logout, and `/api/me`
 - Product policies backed by roles and permissions
 - Filament admin panel for products, users, roles, permissions, and imports
+- Swagger UI and OpenAPI JSON documentation
 - Bulk product import from `.csv` or `.xlsx`
 - Import progress tracking with processed/failed row counts
 - Failure CSV download for invalid rows
@@ -71,6 +72,7 @@ Open the app at:
 
 - Admin panel: `http://localhost:8000/admin`
 - API base URL: `http://localhost:8000/api`
+- Swagger docs: `http://localhost:8000/docs/api`
 - MySQL host connection: `127.0.0.1:3307`
 
 Default database credentials in Docker:
@@ -153,6 +155,7 @@ Seeded admin users use `password` as the password:
 - `admin@example.com`
 
 Panel access is limited to the `SuperAdmin` and `Admin` roles.
+The seeded `user@example.com` account also uses `password`, but it is intentionally limited to read-only product API access and cannot sign in to the Filament admin panel.
 
 ## Product Imports
 
@@ -194,8 +197,8 @@ Authentication:
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `POST` | `/api/login` | Issue a personal access token |
-| `POST` | `/api/logout` | Revoke the current token |
+| `POST` | `/api/login` | Issue a personal access token in an HTTP-only cookie |
+| `POST` | `/api/logout` | Revoke the current token and clear the cookie |
 | `GET` | `/api/me` | Return the current user, roles, and permissions |
 
 Products:
@@ -208,11 +211,23 @@ Products:
 | `PUT/PATCH` | `/api/products/{product}` | `products.update` |
 | `DELETE` | `/api/products/{product}` | `products.delete` |
 
-Use the token from `/api/login` as a bearer token:
+`/api/login` does not return the access token in the JSON body. It sets the token in the `lpup_token` HTTP-only cookie so browser clients can authenticate without storing tokens in JavaScript-readable storage.
+
+Example login and authenticated request with cookies:
 
 ```bash
-curl -H "Authorization: Bearer <token>" http://localhost:8000/api/products
+curl -i -c cookies.txt \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    -d '{"email":"user@example.com","password":"password"}' \
+    http://localhost:8000/api/login
+
+curl -b cookies.txt \
+    -H "Accept: application/json" \
+    http://localhost:8000/api/products
 ```
+
+Swagger UI is available at `/docs/api`, and the OpenAPI JSON document is available at `/docs/openapi.json`.
 
 ## Roles and Permissions
 

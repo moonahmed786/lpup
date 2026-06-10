@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProductImports\Tables;
 
 use App\Enums\ProductImportStatus;
+use App\Filament\Support\FilamentAccess;
 use App\Models\ProductImport;
 use App\Services\ProductImportService;
 use Filament\Actions\Action;
@@ -60,7 +61,7 @@ class ProductImportsTable
                 Action::make('downloadSample')
                     ->label('Download Sample CSV')
                     ->icon('heroicon-o-arrow-down-tray')
-                    ->visible(fn (): bool => auth()->user()?->can('imports.upload') ?? false)
+                    ->visible(fn (): bool => FilamentAccess::hasPermission('imports.upload'))
                     ->action(function () {
                         $csvContent = "name,sku,quantity,price,description,status\nSample Product,SKU-12345,100,19.99,A sample product description,active";
 
@@ -75,7 +76,7 @@ class ProductImportsTable
                     ->icon('heroicon-o-play')
                     ->color('success')
                     ->visible(fn (ProductImport $record): bool => $record->canStart()
-                        && (auth()->user()?->can('imports.start') ?? false))
+                        && FilamentAccess::hasPermission('imports.start'))
                     ->requiresConfirmation()
                     ->modalHeading('Start import')
                     ->modalDescription('This will queue the import to run again from the beginning.')
@@ -93,7 +94,7 @@ class ProductImportsTable
                     ->icon('heroicon-o-stop')
                     ->color('danger')
                     ->visible(fn (ProductImport $record): bool => $record->canStop()
-                        && (auth()->user()?->can('imports.stop') ?? false))
+                        && FilamentAccess::hasPermission('imports.stop'))
                     ->requiresConfirmation()
                     ->modalHeading('Stop import')
                     ->modalDescription('A running import will stop after the current chunk finishes. Pending imports will be stopped before they start.')
@@ -111,7 +112,7 @@ class ProductImportsTable
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('danger')
                     ->visible(fn (ProductImport $record): bool => filled($record->error_log_path)
-                        && (auth()->user()?->can('imports.downloadFailures') ?? false)
+                        && FilamentAccess::hasPermission('imports.downloadFailures')
                         && Storage::disk(config('product_import.disk'))->exists($record->error_log_path))
                     ->action(fn (ProductImport $record) => Storage::disk(config('product_import.disk'))
                         ->download($record->error_log_path, "failed_rows_import_{$record->id}.csv")),
@@ -119,7 +120,7 @@ class ProductImportsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->visible(fn (): bool => auth()->user()?->can('imports.delete') ?? false),
+                        ->visible(fn (): bool => FilamentAccess::hasPermission('imports.delete')),
                 ]),
             ]);
     }

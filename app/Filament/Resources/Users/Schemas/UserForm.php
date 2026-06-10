@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Filament\Support\FilamentAccess;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
@@ -35,7 +36,7 @@ class UserForm
                     ->maxLength(255),
 
                 Select::make('roles')
-                    ->relationship('roles', 'name', fn (Builder $query): Builder => auth()->user()?->hasRole('SuperAdmin')
+                    ->relationship('roles', 'name', fn (Builder $query): Builder => FilamentAccess::isSuperAdmin()
                         ? $query
                         : $query->where('name', '!=', 'SuperAdmin'))
                     ->multiple()

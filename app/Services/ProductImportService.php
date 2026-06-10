@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ProductImportStatus;
 use App\Jobs\ProcessProductImport;
 use App\Models\ProductImport;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
 class ProductImportService
@@ -30,6 +31,22 @@ class ProductImportService
         ProcessProductImport::dispatch($import->id, $batchId);
 
         return $import;
+    }
+
+    public function startUploadedImport(UploadedFile $uploadedFile, ?int $userId = null): ProductImport
+    {
+        $extension = strtolower($uploadedFile->getClientOriginalExtension() ?: $uploadedFile->extension() ?: 'csv');
+        $storedPath = $uploadedFile->storeAs(
+            'imports',
+            Str::uuid()->toString().'.'.$extension,
+            ['disk' => config('product_import.disk')],
+        );
+
+        return $this->startImport(
+            storedPath: $storedPath,
+            originalFilename: $uploadedFile->getClientOriginalName(),
+            userId: $userId,
+        );
     }
 
     public function startExisting(ProductImport $import): ProductImport

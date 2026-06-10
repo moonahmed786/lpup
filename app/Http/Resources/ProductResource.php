@@ -18,6 +18,8 @@ class ProductResource extends JsonApiResource
         'name',
         'sku',
         'quantity',
+        'price',
+        'description',
         'status',
         'created_at',
         'updated_at',

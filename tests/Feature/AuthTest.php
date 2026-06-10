@@ -12,7 +12,7 @@ beforeEach(function () {
     $this->seed(RolePermissionSeeder::class);
 });
 
-it('issues an access token for valid credentials', function () {
+it('issues an http-only access cookie for valid credentials', function () {
     // A personal access client must exist for createToken() to work.
     app(ClientRepository::class)->createPersonalAccessGrantClient('Test Personal Access Client', 'users');
 
@@ -28,9 +28,23 @@ it('issues an access token for valid credentials', function () {
     ]);
 
     $response->assertOk()
-        ->assertJsonStructure(['access_token', 'token_type', 'user' => ['id', 'email', 'roles', 'permissions']])
-        ->assertJsonPath('token_type', 'Bearer')
+        ->assertCookie(config('api.auth_cookie.name'))
+        ->assertJsonMissingPath('access_token')
+        ->assertJsonMissingPath('token_type')
+        ->assertJsonStructure(['message', 'user' => ['id', 'email', 'roles', 'permissions']])
         ->assertJsonPath('user.roles', ['User']);
+
+    $cookie = collect($response->headers->getCookies())
+        ->first(fn ($cookie) => $cookie->getName() === config('api.auth_cookie.name'));
+
+    expect($cookie)->not->toBeNull()
+        ->and($cookie->isHttpOnly())->toBeTrue();
+
+    $this->withCredentials()
+        ->withUnencryptedCookie(config('api.auth_cookie.name'), $cookie->getValue())
+        ->getJson('/api/me')
+        ->assertOk()
+        ->assertJsonPath('email', 'jane@example.com');
 });
 
 it('rejects invalid credentials with a 422', function () {
@@ -85,5 +99,7 @@ it('allows an authenticated user to log out', function () {
     $user = User::factory()->create();
     Passport::actingAs($user, [], 'api');
 
-    $this->postJson('/api/logout')->assertNoContent();
+    $this->postJson('/api/logout')
+        ->assertNoContent()
+        ->assertCookieExpired(config('api.auth_cookie.name'));
 });

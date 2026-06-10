@@ -8,14 +8,14 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Routing\Attributes\Controllers\Middleware;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
     /**
-     * Issue a Passport personal access token for valid credentials.
+     * Issue a Passport personal access token in a secure HTTP-only cookie.
      *
      * Password-grant and client-credentials flows remain available via
      * Passport's POST /oauth/token endpoint (see README).
@@ -30,11 +30,20 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken('api')->accessToken;
+        $cookie = cookie(
+            name: Config::string('api.auth_cookie.name'),
+            value: $user->createToken('api')->accessToken,
+            minutes: Config::integer('api.auth_cookie.ttl_minutes'),
+            path: '/',
+            domain: config('session.domain'),
+            secure: (bool) config('session.secure'),
+            httpOnly: true,
+            raw: false,
+            sameSite: config('session.same_site', 'lax'),
+        );
 
         return response()->json([
-            'access_token' => $token,
-            'token_type' => 'Bearer',
+            'message' => 'Authenticated.',
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -42,24 +51,23 @@ class AuthController extends Controller
                 'roles' => $user->getRoleNames(),
                 'permissions' => $user->getAllPermissions()->pluck('name'),
             ],
-        ]);
+        ])->withCookie($cookie);
     }
 
     /**
      * Revoke the access token used to authenticate the current request.
      */
-    #[Middleware('auth:api')]
     public function logout(Request $request): Response
     {
         $request->user()->token()->revoke();
 
-        return response()->noContent();
+        return response('', Response::HTTP_NO_CONTENT)
+            ->withCookie(cookie()->forget(Config::string('api.auth_cookie.name')));
     }
 
     /**
      * Return the authenticated user with their roles and permissions.
      */
-    #[Middleware('auth:api')]
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();

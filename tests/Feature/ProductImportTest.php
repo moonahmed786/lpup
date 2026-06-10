@@ -8,6 +8,7 @@ use App\Models\ProductImport;
 use App\Services\ProductImportService;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\FailOnTimeout;
 use Illuminate\Queue\Attributes\Timeout;
@@ -57,6 +58,26 @@ it('creates a pending record and queues the job', function () {
         ->and($import->filename)->toBe('products.csv')
         ->and($import->path)->toBe($path);
 
+    Queue::assertPushed(ProcessProductImport::class, fn ($job) => $job->importId === $import->id);
+});
+
+it('stores uploaded import files with a generated filename before queueing', function () {
+    Queue::fake();
+    Storage::fake('local');
+
+    $file = UploadedFile::fake()->createWithContent(
+        'product_import_200k_records.csv',
+        "name,sku,quantity,status\nWidget,SKU-1,10,active\n",
+    );
+
+    $import = app(ProductImportService::class)->startUploadedImport($file, null);
+
+    expect($import->filename)->toBe('product_import_200k_records.csv')
+        ->and($import->path)->toStartWith('imports/')
+        ->and($import->path)->toEndWith('.csv')
+        ->and($import->path)->not->toContain('product_import_200k_records');
+
+    Storage::disk('local')->assertExists($import->path);
     Queue::assertPushed(ProcessProductImport::class, fn ($job) => $job->importId === $import->id);
 });
 

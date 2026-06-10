@@ -2,6 +2,7 @@
 
 namespace App\Filament\Actions;
 
+use App\Filament\Support\FilamentAccess;
 use App\Services\ProductImportService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
@@ -22,25 +23,31 @@ class ImportProductsAction
                 FileUpload::make('file')
                     ->label('Spreadsheet')
                     ->helperText('.xlsx or .csv with header columns: name, sku, quantity or stock, price, description, status')
-                    ->disk(config('product_import.disk'))
-                    ->directory('imports')
-                    ->preserveFilenames()
                     ->maxSize(config('product_import.max_upload_kb'))
                     ->acceptedFileTypes([
+                        'text/csv',
+                        'text/x-csv',
+                        'application/csv',
+                        'application/x-csv',
+                        'text/comma-separated-values',
+                        'text/x-comma-separated-values',
+                        'text/plain',
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         'application/vnd.ms-excel',
-                        'text/csv',
-                        'text/plain',
                     ])
+                    ->extraInputAttributes([
+                        'accept' => '.csv,.xlsx,text/csv,text/x-csv,application/csv,application/x-csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel',
+                    ])
+                    ->storeFiles(false)
+                    ->visibility('private')
                     ->required(),
             ])
-            ->visible(fn (): bool => auth()->user()?->can('imports.upload') ?? false)
+            ->visible(fn (): bool => FilamentAccess::hasPermission('imports.upload'))
             ->action(function (array $data): void {
-                $path = Arr::first(Arr::wrap($data['file']));
+                $uploadedFile = Arr::first(Arr::wrap($data['file']));
 
-                $import = app(ProductImportService::class)->startImport(
-                    storedPath: $path,
-                    originalFilename: basename($path),
+                $import = app(ProductImportService::class)->startUploadedImport(
+                    uploadedFile: $uploadedFile,
                     userId: auth()->id(),
                 );
 

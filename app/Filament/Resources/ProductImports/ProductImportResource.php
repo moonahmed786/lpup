@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ProductImports;
 
 use App\Filament\Resources\ProductImports\Pages\ListProductImports;
 use App\Filament\Resources\ProductImports\Tables\ProductImportsTable;
+use App\Filament\Support\FilamentAccess;
 use App\Models\ProductImport;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -35,12 +36,12 @@ class ProductImportResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->can('imports.viewAny') ?? false;
+        return FilamentAccess::hasPermission('imports.viewAny');
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('imports.delete') ?? false;
+        return FilamentAccess::hasPermission('imports.delete');
     }
 
     public static function getPages(): array

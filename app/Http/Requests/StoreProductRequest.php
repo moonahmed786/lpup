@@ -27,6 +27,8 @@ class StoreProductRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'sku' => ['required', 'string', 'max:255', Rule::unique('products', 'sku')],
             'quantity' => ['required', 'integer', 'min:0'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+            'description' => ['nullable', 'string', 'max:5000'],
             'status' => ['required', new Enum(ProductStatus::class)],
         ];
     }

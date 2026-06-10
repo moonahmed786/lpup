@@ -7,6 +7,8 @@ use Filament\Schemas\Schema;
 
 class PermissionForm
 {
+    private const GUARD = 'api';
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -17,7 +19,9 @@ class PermissionForm
                     ->maxLength(255),
 
                 TextInput::make('guard_name')
-                    ->default('api')
+                    ->default(self::GUARD)
+                    ->disabled()
+                    ->dehydrated()
                     ->required()
                     ->maxLength(255),
             ]);

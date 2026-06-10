@@ -182,15 +182,28 @@ class ProductsImport implements ToCollection, WithChunkReading, WithEvents, With
         }
 
         if (! $this->failureHeaderWritten && ! $disk->exists($path)) {
-            $disk->put($path, "name,sku,quantity,price,description,status,error\n");
+            $disk->put($path, 'name,sku,quantity,price,description,status,error');
         }
 
         $this->failureHeaderWritten = true;
 
-        $handle = fopen($disk->path($path), 'a');
+        $disk->append($path, $this->csv($failures));
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $failures
+     */
+    private function csv(array $failures): string
+    {
+        $handle = fopen('php://temp', 'r+');
         foreach ($failures as $f) {
             fputcsv($handle, [$f['name'], $f['sku'], $f['quantity'], $f['price'], $f['description'], $f['status'], $f['error']]);
         }
+
+        rewind($handle);
+        $csv = rtrim((string) stream_get_contents($handle), "\n");
         fclose($handle);
+
+        return $csv;
     }
 }

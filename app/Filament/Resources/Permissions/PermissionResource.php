@@ -7,6 +7,7 @@ use App\Filament\Resources\Permissions\Pages\EditPermission;
 use App\Filament\Resources\Permissions\Pages\ListPermissions;
 use App\Filament\Resources\Permissions\Schemas\PermissionForm;
 use App\Filament\Resources\Permissions\Tables\PermissionsTable;
+use App\Filament\Support\FilamentAccess;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -72,6 +73,6 @@ class PermissionResource extends Resource
 
     private static function canManageAccessControl(): bool
     {
-        return auth()->user()?->hasRole('SuperAdmin') ?? false;
+        return FilamentAccess::isSuperAdmin();
     }
 }

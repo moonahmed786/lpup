@@ -1,7 +1,9 @@
 <?php
 
 use App\Filament\Resources\Permissions\PermissionResource;
+use App\Filament\Resources\ProductImports\ProductImportResource;
 use App\Filament\Resources\Roles\RoleResource;
+use App\Filament\Support\FilamentAccess;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -52,4 +54,27 @@ it('keeps users read only for products and admins away from product uploads', fu
         ->and($user->hasPermissionTo('products.create', 'api'))->toBeFalse()
         ->and($user->hasPermissionTo('products.update', 'api'))->toBeFalse()
         ->and($user->hasPermissionTo('products.delete', 'api'))->toBeFalse();
+});
+
+it('shows product import controls only to super admins in Filament', function () {
+    actingAsFilamentRole('SuperAdmin');
+
+    expect(FilamentAccess::hasPermission('imports.upload'))->toBeTrue()
+        ->and(FilamentAccess::hasPermission('imports.start'))->toBeTrue()
+        ->and(FilamentAccess::hasPermission('imports.stop'))->toBeTrue()
+        ->and(ProductImportResource::canViewAny())->toBeTrue();
+
+    actingAsFilamentRole('Admin');
+
+    expect(FilamentAccess::hasPermission('imports.viewAny'))->toBeTrue()
+        ->and(FilamentAccess::hasPermission('imports.upload'))->toBeFalse()
+        ->and(FilamentAccess::hasPermission('imports.start'))->toBeFalse()
+        ->and(FilamentAccess::hasPermission('imports.stop'))->toBeFalse()
+        ->and(ProductImportResource::canViewAny())->toBeTrue();
+
+    actingAsFilamentRole('User');
+
+    expect(FilamentAccess::hasPermission('imports.viewAny'))->toBeFalse()
+        ->and(FilamentAccess::hasPermission('imports.upload'))->toBeFalse()
+        ->and(ProductImportResource::canViewAny())->toBeFalse();
 });

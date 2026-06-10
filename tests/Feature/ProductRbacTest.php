@@ -28,6 +28,8 @@ function productPayload(array $overrides = []): array
         'name' => 'Widget',
         'sku' => 'SKU-TEST-001',
         'quantity' => 10,
+        'price' => 19.99,
+        'description' => 'Test product',
         'status' => 'active',
     ], $overrides);
 }
@@ -88,9 +90,15 @@ describe('Admin role (manage products)', function () {
     });
 
     it('validates product creation', function () {
-        $this->postJson('/api/products', productPayload(['quantity' => -5, 'status' => 'nope']))
+        $this->postJson('/api/products', productPayload(['quantity' => -5, 'price' => -1, 'status' => 'nope']))
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['quantity', 'status']);
+            ->assertJsonValidationErrors(['quantity', 'price', 'status']);
+    });
+
+    it('validates product list query parameters', function () {
+        $this->getJson('/api/products?per_page=101')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('per_page');
     });
 
     it('can update a product', function () {

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -22,23 +23,23 @@ class DatabaseSeeder extends Seeder
             return;
         }
 
-        $superAdmin = User::factory()->create([
+        $superAdmin = User::updateOrCreate(['email' => 'superadmin@example.com'], [
             'name' => 'Super Admin',
-            'email' => 'superadmin@example.com',
+            'password' => Hash::make('password'),
         ]);
-        $superAdmin->assignRole('SuperAdmin');
+        $superAdmin->syncRoles('SuperAdmin');
 
-        $admin = User::factory()->create([
+        $admin = User::updateOrCreate(['email' => 'admin@example.com'], [
             'name' => 'Admin',
-            'email' => 'admin@example.com',
+            'password' => Hash::make('password'),
         ]);
-        $admin->assignRole('Admin');
+        $admin->syncRoles('Admin');
 
-        $user = User::factory()->create([
+        $user = User::updateOrCreate(['email' => 'user@example.com'], [
             'name' => 'User',
-            'email' => 'user@example.com',
+            'password' => Hash::make('password'),
         ]);
-        $user->assignRole('User');
+        $user->syncRoles('User');
 
         $this->call(ProductSeeder::class);
     }
