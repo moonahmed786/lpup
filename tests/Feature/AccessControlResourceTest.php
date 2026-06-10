@@ -2,7 +2,9 @@
 
 use App\Filament\Resources\Permissions\PermissionResource;
 use App\Filament\Resources\ProductImports\ProductImportResource;
+use App\Filament\Resources\Products\ProductResource;
 use App\Filament\Resources\Roles\RoleResource;
+use App\Filament\Resources\Users\UserResource;
 use App\Filament\Support\FilamentAccess;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
@@ -39,6 +41,34 @@ it('allows only super admins to manage roles and permissions', function () {
         ->and(RoleResource::canCreate())->toBeTrue()
         ->and(PermissionResource::canViewAny())->toBeTrue()
         ->and(PermissionResource::canCreate())->toBeTrue();
+});
+
+it('allows product viewers to access the Filament panel', function () {
+    $panel = filament()->getPanel('admin');
+
+    $user = User::factory()->create();
+    $user->assignRole('User');
+
+    $admin = User::factory()->create();
+    $admin->assignRole('Admin');
+
+    $superAdmin = User::factory()->create();
+    $superAdmin->assignRole('SuperAdmin');
+
+    expect($user->canAccessPanel($panel))->toBeTrue()
+        ->and($admin->canAccessPanel($panel))->toBeTrue()
+        ->and($superAdmin->canAccessPanel($panel))->toBeTrue();
+});
+
+it('keeps user role read only inside Filament', function () {
+    actingAsFilamentRole('User');
+
+    expect(ProductResource::canViewAny())->toBeTrue()
+        ->and(ProductResource::canCreate())->toBeFalse()
+        ->and(UserResource::canViewAny())->toBeFalse()
+        ->and(RoleResource::canViewAny())->toBeFalse()
+        ->and(PermissionResource::canViewAny())->toBeFalse()
+        ->and(ProductImportResource::canViewAny())->toBeFalse();
 });
 
 it('keeps users read only for products and admins away from product uploads', function () {

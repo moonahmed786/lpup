@@ -12,6 +12,14 @@ beforeEach(function () {
     $this->seed(RolePermissionSeeder::class);
 });
 
+it('returns login instructions for browser GET requests', function () {
+    $this->getJson('/api/login')
+        ->assertStatus(405)
+        ->assertJsonPath('method', 'POST')
+        ->assertJsonPath('body.email', 'user@example.com')
+        ->assertJsonPath('body.password', 'password');
+});
+
 it('issues an http-only access cookie for valid credentials', function () {
     // A personal access client must exist for createToken() to work.
     app(ClientRepository::class)->createPersonalAccessGrantClient('Test Personal Access Client', 'users');

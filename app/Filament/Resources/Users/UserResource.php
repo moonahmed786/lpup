@@ -7,12 +7,14 @@ use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\Tables\UsersTable;
+use App\Filament\Support\FilamentAccess;
 use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class UserResource extends Resource
 {
@@ -44,5 +46,25 @@ class UserResource extends Resource
             'create' => CreateUser::route('/create'),
             'edit' => EditUser::route('/{record}/edit'),
         ];
+    }
+
+    public static function canViewAny(): bool
+    {
+        return FilamentAccess::hasPermission('users.manage');
+    }
+
+    public static function canCreate(): bool
+    {
+        return FilamentAccess::hasPermission('users.manage');
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return FilamentAccess::hasPermission('users.manage');
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return FilamentAccess::hasPermission('users.manage');
     }
 }

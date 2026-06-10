@@ -42,8 +42,7 @@ The default `.env.example` uses SQLite. Create the local database and run migrat
 ```bash
 touch database/database.sqlite
 php artisan migrate --seed
-php artisan passport:keys
-php artisan passport:client --personal --name="LPUP Personal Access Client"
+php artisan lpup:install-passport
 ```
 
 Start the local server:
@@ -63,9 +62,7 @@ cp .env.example .env
 # Set DB_PASSWORD and MYSQL_ROOT_PASSWORD in .env before starting Docker.
 docker compose up -d --build
 docker compose exec app php artisan migrate --seed
-docker compose exec app php artisan passport:keys --force
-docker compose exec app php artisan passport:client --personal \
-    --name="LPUP Personal Access Client" --provider=users --no-interaction
+docker compose exec app php artisan lpup:install-passport
 ```
 
 Open the app at:
@@ -116,7 +113,7 @@ Start the stack:
 ```bash
 docker compose -f docker-compose.production.yml up -d --build
 docker compose -f docker-compose.production.yml exec app php artisan migrate --force
-docker compose -f docker-compose.production.yml exec app php artisan passport:keys --force
+docker compose -f docker-compose.production.yml exec app php artisan lpup:install-passport
 docker compose -f docker-compose.production.yml exec app php artisan config:cache
 docker compose -f docker-compose.production.yml exec app php artisan route:cache
 docker compose -f docker-compose.production.yml exec app php artisan view:cache
@@ -179,6 +176,19 @@ Supported columns:
 | `status` | No | `active`, `inactive`, or `draft`; defaults to `draft` |
 
 Extra columns such as `category` are ignored.
+
+### Upload size limits
+
+The maximum upload size is controlled by `PRODUCT_IMPORT_MAX_UPLOAD_KB` (default `102400`, i.e. 100 MB), which feeds both the Filament `FileUpload` validation and the Livewire temporary-upload rules. The production Docker image already sets matching PHP and nginx limits (`docker/php/php.ini`, `docker/nginx/default.conf`).
+
+For local development, PHP's own limits must be at least as large, otherwise larger files are silently rejected by PHP before validation runs. Ensure your local `php.ini` has:
+
+```ini
+upload_max_filesize = 100M
+post_max_size = 100M
+```
+
+Verify with `php -i | grep -E "upload_max_filesize|post_max_size"` and restart your PHP server after changing them.
 
 The import table shows:
 

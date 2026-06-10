@@ -15,6 +15,22 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     /**
+     * Explain how the login endpoint should be called.
+     */
+    public function loginInstructions(): JsonResponse
+    {
+        return response()->json([
+            'message' => 'Use POST /api/login with a JSON email and password payload.',
+            'method' => 'POST',
+            'endpoint' => url('/api/login'),
+            'body' => [
+                'email' => 'user@example.com',
+                'password' => 'password',
+            ],
+        ], Response::HTTP_METHOD_NOT_ALLOWED);
+    }
+
+    /**
      * Issue a Passport personal access token in a secure HTTP-only cookie.
      *
      * Password-grant and client-credentials flows remain available via

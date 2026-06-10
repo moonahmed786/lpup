@@ -4,11 +4,11 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Filament\Models\Contracts\FilamentUser;
-use Filament\Panel;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Passport\HasApiTokens;
@@ -41,11 +41,14 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * Gate Filament admin panel access. Role checks resolve on the `api`
-     * guard (see $guard_name), so the same roles seeded for the API apply.
+     * Gate Filament admin panel access. Once inside Filament, resources and
+     * actions still enforce their own permissions.
      */
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->hasAnyRole(['SuperAdmin', 'Admin']);
+        return $this->hasPermissionTo('products.viewAny')
+            || $this->hasPermissionTo('imports.viewAny')
+            || $this->hasPermissionTo('users.manage')
+            || $this->hasRole('SuperAdmin');
     }
 }

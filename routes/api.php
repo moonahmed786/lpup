@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ProductController;
 use Illuminate\Support\Facades\Route;
 
 // Auth (token issuance is public; protected endpoints use Passport).
+Route::get('login', [AuthController::class, 'loginInstructions'])->name('login.instructions');
 Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login');
 
 Route::middleware('auth:api')->group(function (): void {
