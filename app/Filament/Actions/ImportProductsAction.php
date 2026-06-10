@@ -35,8 +35,15 @@ class ImportProductsAction
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         'application/vnd.ms-excel',
                     ])
+                    ->mimeTypeMap([
+                        'csv' => 'text/csv',
+                        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    ])
                     ->extraInputAttributes([
                         'accept' => '.csv,.xlsx,text/csv,text/x-csv,application/csv,application/x-csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel',
+                    ])
+                    ->extraAlpineAttributes([
+                        'x-on:click' => 'if ($event.target.tagName !== \'INPUT\' && ! $event.target.closest(\'.filepond--file\')) pond?.browse()',
                     ])
                     ->storeFiles(false)
                     ->visibility('private')
